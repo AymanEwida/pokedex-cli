@@ -105,7 +105,6 @@ func main() {
 			params := words[1:]
 
 			err := command.callback(&config, params)
-
 			if err != nil {
 				fmt.Println(err)
 			}
