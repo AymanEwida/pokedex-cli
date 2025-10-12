@@ -30,14 +30,12 @@ func CommandExit(config *Config, params []string) error {
 	return nil
 }
 
-func CommandHelp(commands map[string]CliCommand) error {
+func CommandHelp(commands map[string]CliCommand) {
 	fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
 
 	for _, v := range commands {
 		fmt.Printf("%v: %v\n", v.name, v.description)
 	}
-
-	return nil
 }
 
 func CommandMapf(config *Config, params []string) error {

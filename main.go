@@ -1,28 +1,24 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
+	"log"
 	"time"
 
 	"github.com/AymanEwida/pokedex-cli/internal"
 	"github.com/AymanEwida/pokedex-cli/internal/pokeapi"
+	"github.com/AymanEwida/pokedex-cli/lib"
+	"github.com/eiannone/keyboard"
 )
 
-func cleanInput(text string) []string {
-	if len(text) == 0 {
-		return []string{}
+func main() {
+	err := keyboard.Open()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	text = strings.ToLower(text)
-	words := strings.Fields(text)
+	defer keyboard.Close()
 
-	return words
-}
-
-func main() {
 	config := Config{
 		Client:   pokeapi.NewClient(time.Duration(5*time.Second), time.Duration(30*60*time.Second)),
 		Next:     "https://pokeapi.co/api/v2/location-area?offset=0&limit=20",
@@ -79,15 +75,107 @@ func main() {
 		},
 	}
 
-	reader := bufio.NewScanner(os.Stdin)
+	prevCommands := lib.NewStack[string]()
+	redoCommands := lib.NewStack[string]()
+
+	buffer := ""
+	hittedKey := ""
+
+	fmt.Print("Pokedex > ")
 
 	for {
-		fmt.Print("Pokedex > ")
-		reader.Scan()
+		fmt.Printf("%v", hittedKey)
 
-		words := cleanInput(reader.Text())
+		char, key, err := keyboard.GetKey()
+		if err != nil {
+			fmt.Println(err)
+
+			continue
+		}
+
+		if key == 127 {
+			hittedKey = ""
+
+			if len(buffer) > 0 {
+				buffer = buffer[:len(buffer)-1]
+			}
+
+			fmt.Printf("\rPokedex > %v", buffer)
+			fmt.Print(" ")
+			fmt.Printf("\rPokedex > %v", buffer)
+
+			continue
+		}
+
+		switch key {
+		case keyboard.KeyCtrlC:
+			return
+
+		case keyboard.KeyArrowUp:
+			hittedKey = ""
+
+			prevBufferSize := len(buffer)
+
+			prevCommand, _ := prevCommands.Pop()
+			if len(prevCommand) > 0 {
+				redoCommands.Push(prevCommand)
+			}
+
+			buffer = prevCommand
+
+			fmt.Printf("\rPokedex > %v", buffer)
+			for range prevBufferSize {
+				fmt.Print(" ")
+			}
+			fmt.Printf("\rPokedex > %v", buffer)
+
+			continue
+
+		case keyboard.KeyArrowDown:
+			hittedKey = ""
+
+			prevBufferSize := len(buffer)
+
+			redoCommand, _ := redoCommands.Pop()
+			if len(redoCommand) > 0 {
+				prevCommands.Push(redoCommand)
+			}
+
+			buffer, _ = redoCommands.Peek()
+
+			fmt.Printf("\rPokedex > %v", buffer)
+			for range prevBufferSize {
+				fmt.Print(" ")
+			}
+			fmt.Printf("\rPokedex > %v", buffer)
+
+			continue
+
+		case keyboard.KeySpace:
+			buffer += " "
+			hittedKey = " "
+
+			continue
+
+		default:
+			if key != keyboard.KeyEnter {
+				buffer += string(char)
+				hittedKey = string(char)
+
+				continue
+			} else {
+				fmt.Println()
+			}
+		}
+
+		words := lib.CleanInput(buffer)
 
 		if len(words) == 0 {
+			buffer = ""
+			hittedKey = ""
+
+			fmt.Print("Pokedex > ")
+
 			continue
 		}
 
@@ -95,19 +183,25 @@ func main() {
 
 		if !ok {
 			fmt.Printf("Unknown command: %v\n", words[0])
-
-			continue
-		}
-
-		if command.name == "help" {
-			CommandHelp(commands)
 		} else {
-			params := words[1:]
+			if command.name == "help" {
+				CommandHelp(commands)
+			} else {
+				params := words[1:]
 
-			err := command.callback(&config, params)
-			if err != nil {
-				fmt.Println(err)
+				err := command.callback(&config, params)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
+
+		lib.MoveStackToStack(&redoCommands, &prevCommands)
+		prevCommands.Push(buffer)
+
+		buffer = ""
+		hittedKey = ""
+
+		fmt.Print("Pokedex > ")
 	}
 }
