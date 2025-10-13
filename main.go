@@ -62,6 +62,12 @@ func main() {
 			callback:    CommandCatch,
 		},
 
+		"fight": {
+			name:        "fight <pokemon-name>",
+			description: "fight a pokemon with user pokemon collection and earn EV points to grow you pokemons stats",
+			callback:    CommandFight,
+		},
+
 		"inspect": {
 			name:        "inspect <pokemon-name>",
 			description: "inspect a pokemon you have caught, this command takes a <pokemon-name> param",

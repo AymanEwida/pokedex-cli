@@ -12,16 +12,18 @@ import (
 	"github.com/AymanEwida/pokedex-cli/internal/pokecache"
 )
 
-const baseAreaLoacationsUrl string = "https://pokeapi.co/api/v2/location-area/"
-const basePokemonUrl string = "https://pokeapi.co/api/v2/pokemon/"
+const (
+	baseAreaLoacationsUrl string = "https://pokeapi.co/api/v2/location-area/"
+	basePokemonUrl        string = "https://pokeapi.co/api/v2/pokemon/"
+)
 
-type pokemonRarity string
+type PokemonRarity string
 
 const (
-	LOW       pokemonRarity = "low"
-	MID       pokemonRarity = "mid"
-	HIGH      pokemonRarity = "high"
-	LEGENDARY pokemonRarity = "legendary"
+	LOW       PokemonRarity = "low"
+	MID       PokemonRarity = "mid"
+	HIGH      PokemonRarity = "high"
+	LEGENDARY PokemonRarity = "legendary"
 )
 
 type Client struct {
@@ -124,20 +126,17 @@ func (c *Client) GetPokemonAreaLoaction(areaLocationName string) (RespPokemonAre
 	return pokemonAreaLocation, nil
 }
 
-func decidedPokemonRarity(baseExperience int) pokemonRarity {
-	if baseExperience > 300 {
-		return LEGENDARY
-	} else if baseExperience >= 250 {
-		return HIGH
-	} else if baseExperience >= 100 {
-		return MID
-	}
-
-	return LOW
-}
-
-func (c *Client) CatchPokemon(pokemonName string) (Pokemon, error) {
+func (c *Client) GetPokemonByName(pokemonName string) (Pokemon, error) {
 	url := basePokemonUrl + pokemonName
+
+	if val, ok := c.cache.Get(url); ok {
+		var pokemon Pokemon
+		if err := json.Unmarshal(val, &pokemon); err != nil {
+			return Pokemon{}, err
+		}
+
+		return pokemon, nil
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -151,10 +150,6 @@ func (c *Client) CatchPokemon(pokemonName string) (Pokemon, error) {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		return Pokemon{}, errors.New("internet error")
-	}
-
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return Pokemon{}, err
@@ -165,8 +160,31 @@ func (c *Client) CatchPokemon(pokemonName string) (Pokemon, error) {
 		return Pokemon{}, err
 	}
 
+	c.cache.Add(url, data)
+
+	return pokemon, nil
+}
+
+func DecidedPokemonRarity(baseExperience int) PokemonRarity {
+	if baseExperience > 300 {
+		return LEGENDARY
+	} else if baseExperience >= 250 {
+		return HIGH
+	} else if baseExperience >= 100 {
+		return MID
+	}
+
+	return LOW
+}
+
+func (c *Client) CatchPokemon(pokemonName string) (Pokemon, error) {
+	pokemon, err := c.GetPokemonByName(pokemonName)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
 	var probability float64
-	switch decidedPokemonRarity(pokemon.BaseExperience) {
+	switch DecidedPokemonRarity(pokemon.BaseExperience) {
 	case LOW:
 		probability = 80.0 / 100.0
 	case MID:
