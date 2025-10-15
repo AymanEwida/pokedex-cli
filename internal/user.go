@@ -46,13 +46,13 @@ func (u *User) GetAlivePokemonCount() int {
 	return count
 }
 
-func (u *User) GetRandomPokemon() (Pokemon, error) {
+func (u *User) GetRandomPokemon() (*Pokemon, error) {
 	if u.GetPokemonCount() == 0 {
-		return Pokemon{}, errors.New("your pokedex is empty")
+		return &Pokemon{}, errors.New("your pokedex is empty")
 	}
 
 	if u.GetAlivePokemonCount() == 0 {
-		return Pokemon{}, errors.New("all of your pokemons deided")
+		return &Pokemon{}, errors.New("all of your pokemons deided")
 	}
 
 	pokemon, _ := u.GetPokemon(u.PokemonNames[rand.Intn(len(u.PokemonNames))])
@@ -60,20 +60,27 @@ func (u *User) GetRandomPokemon() (Pokemon, error) {
 		pokemon, _ = u.GetPokemon(u.PokemonNames[rand.Intn(len(u.PokemonNames))])
 	}
 
-	return pokemon, nil
+	return &pokemon, nil
 }
 
 func (u *User) AddEVs(baseStatsEvs PokemonBaseStats) {
-	u.EVs.HP = baseStatsEvs[0].Effort
-	u.EVs.Attack = baseStatsEvs[1].Effort
-	u.EVs.Defense = baseStatsEvs[2].Effort
-	u.EVs.SpecialAttack = baseStatsEvs[3].Effort
-	u.EVs.SpecialDefense = baseStatsEvs[4].Effort
-	u.EVs.Speed = baseStatsEvs[5].Effort
+	u.EVs.HP += baseStatsEvs[0].Effort
+	u.EVs.Attack += baseStatsEvs[1].Effort
+	u.EVs.Defense += baseStatsEvs[2].Effort
+	u.EVs.SpecialAttack += baseStatsEvs[3].Effort
+	u.EVs.SpecialDefense += baseStatsEvs[4].Effort
+	u.EVs.Speed += baseStatsEvs[5].Effort
 }
 
 func (u *User) CalcRealStatsToAllPokemons() {
-	for _, pokemon := range u.Pokedex {
-		pokemon.RealStats = CalcAllPokemonRealStat(PokemonBaseStats(pokemon.Stats), pokemon.IVs, u.EVs, pokemon.Level)
+	for name, pokemon := range u.Pokedex {
+		pokemon.RealStats = CalcAllPokemonRealStat(
+			PokemonBaseStats(pokemon.Stats),
+			pokemon.IVs,
+			u.EVs,
+			pokemon.Level,
+		)
+
+		u.Pokedex[name] = pokemon
 	}
 }

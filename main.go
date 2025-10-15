@@ -68,6 +68,12 @@ func main() {
 			callback:    CommandFight,
 		},
 
+		"simulate-fight": {
+			name:        "simulate-fight <fighterA-name> <fighterB-name>",
+			description: "simulate fights between two pokemons from your Pokedex",
+			callback:    CommandSimulatFight,
+		},
+
 		"inspect": {
 			name:        "inspect <pokemon-name>",
 			description: "inspect a pokemon you have caught, this command takes a <pokemon-name> param",
