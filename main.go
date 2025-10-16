@@ -91,12 +91,10 @@ func main() {
 	redoCommands := lib.NewStack[string]()
 
 	buffer := ""
-	hittedKey := ""
-
-	fmt.Print("Pokedex > ")
+	idx := len(buffer)
 
 	for {
-		fmt.Printf("%v", hittedKey)
+		fmt.Printf("\rPokedex > %v", buffer[:idx])
 
 		char, key, err := keyboard.GetKey()
 		if err != nil {
@@ -106,10 +104,14 @@ func main() {
 		}
 
 		if key == 127 {
-			hittedKey = ""
-
 			if len(buffer) > 0 {
-				buffer = buffer[:len(buffer)-1]
+				if idx == len(buffer) {
+					buffer = buffer[:len(buffer)-1]
+				} else {
+					buffer = buffer[:idx-1] + buffer[idx:]
+				}
+
+				idx -= 1
 			}
 
 			fmt.Printf("\rPokedex > %v", buffer)
@@ -123,9 +125,21 @@ func main() {
 		case keyboard.KeyCtrlC:
 			return
 
-		case keyboard.KeyArrowUp:
-			hittedKey = ""
+		case keyboard.KeyArrowLeft:
+			if idx > 0 {
+				idx -= 1
+			}
 
+			continue
+
+		case keyboard.KeyArrowRight:
+			if idx < len(buffer) {
+				idx += 1
+			}
+
+			continue
+
+		case keyboard.KeyArrowUp:
 			prevBufferSize := len(buffer)
 
 			prevCommand, _ := prevCommands.Pop()
@@ -134,6 +148,7 @@ func main() {
 			}
 
 			buffer = prevCommand
+			idx = len(buffer)
 
 			fmt.Printf("\rPokedex > %v", buffer)
 			for range prevBufferSize {
@@ -144,8 +159,6 @@ func main() {
 			continue
 
 		case keyboard.KeyArrowDown:
-			hittedKey = ""
-
 			prevBufferSize := len(buffer)
 
 			redoCommand, _ := redoCommands.Pop()
@@ -154,6 +167,7 @@ func main() {
 			}
 
 			buffer, _ = redoCommands.Peek()
+			idx = len(buffer)
 
 			fmt.Printf("\rPokedex > %v", buffer)
 			for range prevBufferSize {
@@ -164,15 +178,29 @@ func main() {
 			continue
 
 		case keyboard.KeySpace:
-			buffer += " "
-			hittedKey = " "
+			if idx == len(buffer) {
+				buffer += " "
+			} else {
+				buffer = buffer[:idx] + " " + buffer[idx:]
+			}
+
+			idx += 1
+
+			fmt.Printf("\rPokedex > %v", buffer)
 
 			continue
 
 		default:
 			if key != keyboard.KeyEnter {
-				buffer += string(char)
-				hittedKey = string(char)
+				if idx == len(buffer) {
+					buffer += string(char)
+				} else {
+					buffer = buffer[:idx] + string(char) + buffer[idx:]
+				}
+
+				idx += 1
+
+				fmt.Printf("\rPokedex > %v", buffer)
 
 				continue
 			} else {
@@ -184,9 +212,7 @@ func main() {
 
 		if len(words) == 0 {
 			buffer = ""
-			hittedKey = ""
-
-			fmt.Print("Pokedex > ")
+			idx = len(buffer)
 
 			continue
 		}
@@ -212,8 +238,6 @@ func main() {
 		prevCommands.Push(buffer)
 
 		buffer = ""
-		hittedKey = ""
-
-		fmt.Print("Pokedex > ")
+		idx = len(buffer)
 	}
 }
