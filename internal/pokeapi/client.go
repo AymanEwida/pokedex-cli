@@ -239,8 +239,6 @@ func (c *Client) GetMixedPokemonFromAi(pokemon1, pokemon2 Pokemon) (Pokemon, err
 		return Pokemon{}, err
 	}
 
-	// fmt.Printf("output: %v\n", res.OutputText())
-
 	outputText := res.OutputText()
 	var pokemon Pokemon
 	if err := json.Unmarshal([]byte(outputText), &pokemon); err != nil {
