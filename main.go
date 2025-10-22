@@ -3,24 +3,32 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/AymanEwida/pokedex-cli/internal"
 	"github.com/AymanEwida/pokedex-cli/internal/pokeapi"
 	"github.com/AymanEwida/pokedex-cli/lib"
 	"github.com/eiannone/keyboard"
+	"github.com/joho/godotenv"
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 )
 
 func main() {
+	godotenv.Load()
+
 	err := keyboard.Open()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	defer keyboard.Close()
 
+	openaiClient := openai.NewClient(option.WithAPIKey(os.Getenv("OPENAI_API_KEY")))
+
 	config := Config{
-		Client:   pokeapi.NewClient(time.Duration(5*time.Second), time.Duration(30*60*time.Second)),
+		Client:   pokeapi.NewClient(openaiClient, time.Duration(5*time.Second), time.Duration(30*60*time.Second)),
 		Next:     "https://pokeapi.co/api/v2/location-area?offset=0&limit=20",
 		Previous: "",
 		User:     internal.NewUser(),
@@ -72,6 +80,12 @@ func main() {
 			name:        "simulate-fight <fighterA-name> <fighterB-name>",
 			description: "simulate fights between two pokemons from your Pokedex",
 			callback:    CommandSimulatFight,
+		},
+
+		"mix": {
+			name:        "mix <pokemon1-name> <pokemon2-name>",
+			description: "mix two pokemons from your Pokedex to create a new pokemon",
+			callback:    CommandMix,
 		},
 
 		"inspect": {

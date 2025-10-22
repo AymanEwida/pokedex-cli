@@ -120,9 +120,13 @@ func CommandCatch(config *Config, params []string) error {
 		return err
 	}
 
-	config.User.AddPokemon(internal.NewPokemon(&config.User.EVs, pokemon))
+	userPokemon := internal.NewPokemon(&config.User.EVs, pokemon)
+	config.User.AddPokemon(userPokemon)
 
-	fmt.Printf("%s was caught!\n", pokemonName)
+	fmt.Printf("%s was caught!\n", userPokemon.Name)
+	fmt.Printf("\t- Level: %d\n", userPokemon.Level)
+	fmt.Printf("\t- Rarity: %s\n", userPokemon.Rarity)
+	fmt.Printf("type inspect %s, to see more stats\n", userPokemon.Name)
 
 	return nil
 }
@@ -415,11 +419,44 @@ func CommandSimulatFight(config *Config, params []string) error {
 	time.Sleep(1 * time.Second)
 	fmt.Println()
 
-	if fighterA.RealStats.HP < 0 {
+	if fighterA.RealStats.HP <= 0 {
 		fmt.Printf("%v(%v) - %v won!\n", fighterB.Name, fighterB.Level, fighterB.Rarity)
 	} else {
 		fmt.Printf("%v(%v) - %v won!\n", fighterA.Name, fighterA.Level, fighterA.Rarity)
 	}
+
+	return nil
+}
+
+func CommandMix(config *Config, params []string) error {
+	if len(params) < 2 {
+		return errors.New("you need to provide: <pokemon1-name> <pokemon2-name>\nsee 'help' command for more info")
+	}
+
+	pokemon1Name := params[0]
+	pokemon2Name := params[1]
+
+	pokemon1, ok := config.User.GetPokemon(pokemon1Name)
+	if !ok {
+		return fmt.Errorf("%v is not in your pokedex\nboth of the pokemons need to be in your pokedex\nuse the 'catch' command to catch pokemons", pokemon1Name)
+	}
+
+	pokemon2, ok := config.User.GetPokemon(pokemon2Name)
+	if !ok {
+		return fmt.Errorf("%v is not in your pokedex\nboth of the pokemons need to be in your pokedex\nuse the 'catch' command to catch pokemons", pokemon2Name)
+	}
+
+	fmt.Printf("Mixing, %s(%v) - %v, with %s(%v) - %v:\n", pokemon1.Name, pokemon1.Level, pokemon1.Rarity, pokemon2.Name, pokemon2.Level, pokemon2.Rarity)
+
+	pokemon, err := config.Client.GetMixedPokemonFromAi(pokemon1.Pokemon, pokemon2.Pokemon)
+	if err != nil {
+		return err
+	}
+
+	userPokemon := internal.NewPokemon(&config.User.EVs, pokemon)
+	config.User.AddPokemon(userPokemon)
+
+	fmt.Printf("The resulted Pokemon is add to your pokedex: %s(%v) - %v\ntype inspect %s to see more stats\n", userPokemon.Name, userPokemon.Level, userPokemon.Rarity, userPokemon.Name)
 
 	return nil
 }

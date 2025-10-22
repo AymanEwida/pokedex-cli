@@ -1,6 +1,7 @@
 package pokeapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,9 @@ import (
 	"time"
 
 	"github.com/AymanEwida/pokedex-cli/internal/pokecache"
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/packages/param"
+	"github.com/openai/openai-go/responses"
 )
 
 const (
@@ -27,16 +31,18 @@ const (
 )
 
 type Client struct {
-	httpClient http.Client
-	cache      pokecache.Cache
+	httpClient   http.Client
+	cache        pokecache.Cache
+	openaiClient openai.Client
 }
 
-func NewClient(timeout, cacheInterval time.Duration) Client {
+func NewClient(openaiClient openai.Client, timeout, cacheInterval time.Duration) Client {
 	return Client{
 		httpClient: http.Client{
 			Timeout: timeout,
 		},
-		cache: pokecache.NewCache(cacheInterval),
+		cache:        pokecache.NewCache(cacheInterval),
+		openaiClient: openaiClient,
 	}
 }
 
@@ -202,4 +208,44 @@ func (c *Client) CatchPokemon(pokemonName string) (Pokemon, error) {
 	}
 
 	return Pokemon{}, fmt.Errorf("%s escaped", pokemonName)
+}
+
+func (c *Client) GetMixedPokemonFromAi(pokemon1, pokemon2 Pokemon) (Pokemon, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+
+	defer cancel()
+
+	pokemons := []Pokemon{pokemon1, pokemon2}
+
+	pokemonsData, err := json.Marshal(pokemons)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	params := responses.ResponseNewParams{
+		Model:           openai.ChatModelGPT4oMini,
+		Temperature:     openai.Float(0.7),
+		MaxOutputTokens: openai.Int(512),
+		Instructions: param.Opt[string]{
+			Value: CHAT_GPT_DEVLEPOR_INSTRECTIONS,
+		},
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(string(pokemonsData)),
+		},
+	}
+
+	res, err := c.openaiClient.Responses.New(ctx, params)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	// fmt.Printf("output: %v\n", res.OutputText())
+
+	outputText := res.OutputText()
+	var pokemon Pokemon
+	if err := json.Unmarshal([]byte(outputText), &pokemon); err != nil {
+		return Pokemon{}, err
+	}
+
+	return pokemon, nil
 }
